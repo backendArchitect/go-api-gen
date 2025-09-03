@@ -27,6 +27,10 @@ var rootCmd = &cobra.Command{
 automatically generates a complete Go client library for that API. This saves 
 developers time and effort when integrating with a new service.
 
+SUPPORTED FORMATS:
+- JSON (.json files) - Standard Swagger/OpenAPI JSON format
+- YAML (.yaml/.yml files) - YAML format OpenAPI specifications
+
 LOGGING:
 The tool provides comprehensive logging for debugging and monitoring:
 - Use --log-level to control verbosity (debug, info, warn, error)
@@ -35,21 +39,24 @@ The tool provides comprehensive logging for debugging and monitoring:
 - Components are logged separately (cli, generator, parser, templates)
 
 EXAMPLES:
-  # Generate with info logging (default)
+  # Generate from YAML specification
   go-api-gen --input petstore.yaml --output ./generated
   
+  # Generate from JSON specification  
+  go-api-gen --input swagger.json --output ./generated
+  
   # Generate with debug logging for troubleshooting
-  go-api-gen --input petstore.yaml --output ./generated --debug
+  go-api-gen --input petstore.json --output ./generated --debug
   
   # Generate with JSON logging for monitoring systems
-  go-api-gen --input petstore.yaml --output ./generated --json-log`,
+  go-api-gen --input swagger.json --output ./generated --json-log`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return generateClient()
 	},
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&inputFile, "input", "i", "", "Path to OpenAPI/Swagger specification file (required)")
+	rootCmd.Flags().StringVarP(&inputFile, "input", "i", "", "Path to OpenAPI/Swagger specification file (JSON or YAML format) (required)")
 	rootCmd.Flags().StringVarP(&outputDir, "output", "o", "./generated", "Output directory for generated client code")
 	rootCmd.Flags().StringVarP(&packageName, "package", "p", "client", "Go package name for generated code")
 	rootCmd.Flags().StringVarP(&clientName, "client-name", "c", "APIClient", "Name for the generated client struct")

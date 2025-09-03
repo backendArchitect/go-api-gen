@@ -4,7 +4,7 @@ A Go tool that automatically generates complete Go client libraries from OpenAPI
 
 ## Features
 
-- **OpenAPI 3.0 Support**: Parses OpenAPI 3.0 specifications (JSON/YAML)
+- **OpenAPI 3.0 Support**: Parses OpenAPI 3.0 specifications in both **JSON** and **YAML** formats
 - **Complete Client Generation**: Generates HTTP client with methods for all API endpoints
 - **Model Generation**: Creates Go structs for all data models with proper JSON tags
 - **Type Safety**: Converts OpenAPI types to appropriate Go types
@@ -27,14 +27,38 @@ go build ./cmd/go-api-gen
 
 ## Usage
 
+The tool supports both **JSON** and **YAML** formats for OpenAPI/Swagger specifications. Simply point the `--input` flag to your specification file, and the tool will automatically detect and parse the format.
+
+### Working with swagger.json Files
+
+If you have a `swagger.json` file, you can use it directly with go-api-gen:
+
+```bash
+# Basic usage with swagger.json
+go-api-gen --input swagger.json --output ./generated
+
+# Specify custom package and client names
+go-api-gen --input swagger.json --output ./my-client --package myclient --client-name MyAPIClient
+
+# Generate with debug output to troubleshoot issues
+go-api-gen --input swagger.json --output ./generated --debug
+```
+
 ### Basic Usage
 
+Generate from a YAML specification:
 ```bash
 go-api-gen --input petstore.yaml --output ./generated
 ```
 
+Generate from a JSON specification:
+```bash
+go-api-gen --input swagger.json --output ./generated
+```
+
 ### Advanced Usage
 
+With YAML files:
 ```bash
 go-api-gen \
   --input examples/petstore.yaml \
@@ -43,9 +67,18 @@ go-api-gen \
   --client-name PetStoreClient
 ```
 
+With JSON files:
+```bash
+go-api-gen \
+  --input examples/petstore.json \
+  --output ./clients/petstore \
+  --package petstore \
+  --client-name PetStoreClient
+```
+
 ### Command Line Options
 
-- `--input`, `-i`: Path to OpenAPI/Swagger specification file (required)
+- `--input`, `-i`: Path to OpenAPI/Swagger specification file (supports both JSON and YAML formats) (required)
 - `--output`, `-o`: Output directory for generated client code (default: `./generated`)
 - `--package`, `-p`: Go package name for generated code (default: `client`)
 - `--client-name`, `-c`: Name for the generated client struct (default: `APIClient`)
@@ -65,14 +98,17 @@ The tool provides comprehensive logging for debugging and monitoring:
 #### Logging Examples
 
 ```bash
-# Default info-level logging
+# Default info-level logging with YAML
 go-api-gen --input petstore.yaml --output ./generated
+
+# Default info-level logging with JSON
+go-api-gen --input swagger.json --output ./generated
 
 # Debug logging for troubleshooting
 go-api-gen --input petstore.yaml --output ./generated --debug
 
 # JSON structured logging for monitoring
-go-api-gen --input petstore.yaml --output ./generated --json-log
+go-api-gen --input swagger.json --output ./generated --json-log
 
 # Custom log level
 go-api-gen --input petstore.yaml --output ./generated --log-level warn
