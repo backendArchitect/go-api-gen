@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/backendArchitect/go-api-gen/pkg/logger"
 )
 
 func TestGenerateFromPetstore(t *testing.T) {
@@ -11,11 +13,15 @@ func TestGenerateFromPetstore(t *testing.T) {
 	tmpDir := filepath.Join(os.TempDir(), "go-api-gen-test")
 	defer os.RemoveAll(tmpDir)
 
+	// Create a test logger
+	testLogger := logger.New(logger.Config{Level: logger.DebugLevel})
+
 	config := Config{
 		InputFile:   "../../examples/petstore.yaml",
 		OutputDir:   tmpDir,
 		PackageName: "client",
 		ClientName:  "APIClient",
+		Logger:      testLogger,
 	}
 
 	gen := New(config)
