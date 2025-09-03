@@ -49,6 +49,43 @@ go-api-gen \
 - `--output`, `-o`: Output directory for generated client code (default: `./generated`)
 - `--package`, `-p`: Go package name for generated code (default: `client`)
 - `--client-name`, `-c`: Name for the generated client struct (default: `APIClient`)
+- `--log-level`: Log level for output (debug, info, warn, error) (default: `info`)
+- `--debug`: Enable debug logging (equivalent to `--log-level=debug`)
+- `--json-log`: Output logs in JSON format for structured logging
+
+### Logging
+
+The tool provides comprehensive logging for debugging and monitoring:
+
+- **Info Level** (default): Shows major operation progress and completion status
+- **Debug Level**: Detailed tracing of all operations, including parameter extraction, file operations, and template processing
+- **Warn/Error Levels**: Important warnings and error conditions with context
+- **JSON Format**: Structured logging suitable for log aggregation systems
+
+#### Logging Examples
+
+```bash
+# Default info-level logging
+go-api-gen --input petstore.yaml --output ./generated
+
+# Debug logging for troubleshooting
+go-api-gen --input petstore.yaml --output ./generated --debug
+
+# JSON structured logging for monitoring
+go-api-gen --input petstore.yaml --output ./generated --json-log
+
+# Custom log level
+go-api-gen --input petstore.yaml --output ./generated --log-level warn
+```
+
+#### Log Components
+
+Each component logs with a distinct identifier for easy filtering:
+- `cli`: Command-line interface operations
+- `generator`: Overall code generation orchestration
+- `parser`: OpenAPI specification parsing and validation
+- `client-template`: Client code generation and operation extraction
+- `models-template`: Model and type generation
 
 ## Generated Code Structure
 

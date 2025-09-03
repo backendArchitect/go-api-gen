@@ -25,7 +25,24 @@ var rootCmd = &cobra.Command{
 	Short: "Generate Go client libraries from OpenAPI/Swagger specifications",
 	Long: `go-api-gen is a tool that takes an OpenAPI/Swagger specification and 
 automatically generates a complete Go client library for that API. This saves 
-developers time and effort when integrating with a new service.`,
+developers time and effort when integrating with a new service.
+
+LOGGING:
+The tool provides comprehensive logging for debugging and monitoring:
+- Use --log-level to control verbosity (debug, info, warn, error)
+- Use --debug for detailed debug output  
+- Use --json-log for structured JSON logging
+- Components are logged separately (cli, generator, parser, templates)
+
+EXAMPLES:
+  # Generate with info logging (default)
+  go-api-gen --input petstore.yaml --output ./generated
+  
+  # Generate with debug logging for troubleshooting
+  go-api-gen --input petstore.yaml --output ./generated --debug
+  
+  # Generate with JSON logging for monitoring systems
+  go-api-gen --input petstore.yaml --output ./generated --json-log`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return generateClient()
 	},
