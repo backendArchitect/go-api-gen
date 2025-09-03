@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/backendArchitect/go-api-gen/pkg/logger"
 )
 
 // ClientData holds the data needed for client template generation
@@ -38,34 +39,56 @@ type Parameter struct {
 }
 
 // GenerateClient generates the main client code
-func GenerateClient(spec *openapi3.T, packageName, clientName string) (string, error) {
+func GenerateClient(spec *openapi3.T, packageName, clientName string, log *logger.Logger) (string, error) {
+	// Create a default logger if none provided
+	if log == nil {
+		log = logger.New(logger.Config{Level: logger.InfoLevel})
+	}
+	clientLogger := log.WithComponent("client-template")
+	
+	clientLogger.DebugContext("Starting client code generation",
+		"package_name", packageName,
+		"client_name", clientName)
+	
 	data := ClientData{
 		PackageName: packageName,
 		ClientName:  clientName,
-		BaseURL:     getBaseURL(spec),
-		Operations:  extractOperations(spec),
+		BaseURL:     getBaseURL(spec, clientLogger),
+		Operations:  extractOperations(spec, clientLogger),
 	}
+	
+	clientLogger.DebugContext("Template data prepared", 
+		"operation_count", len(data.Operations),
+		"base_url", data.BaseURL)
 
 	tmpl := template.Must(template.New("client").Parse(clientTemplate))
 	
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
+		clientLogger.ErrorContext("Failed to execute client template", "error", err)
 		return "", fmt.Errorf("failed to execute client template: %w", err)
 	}
-
+	
+	clientLogger.DebugContext("Client template executed successfully", "size_bytes", buf.Len())
 	return buf.String(), nil
 }
 
 // getBaseURL extracts the base URL from the OpenAPI spec
-func getBaseURL(spec *openapi3.T) string {
+func getBaseURL(spec *openapi3.T, log *logger.Logger) string {
 	if len(spec.Servers) > 0 {
-		return spec.Servers[0].URL
+		baseURL := spec.Servers[0].URL
+		log.DebugContext("Using base URL from spec", "url", baseURL)
+		return baseURL
 	}
-	return "https://api.example.com"
+	
+	defaultURL := "https://api.example.com"
+	log.WarnContext("No servers defined in spec, using default", "default_url", defaultURL)
+	return defaultURL
 }
 
 // extractOperations extracts all operations from the OpenAPI spec
-func extractOperations(spec *openapi3.T) []Operation {
+func extractOperations(spec *openapi3.T, log *logger.Logger) []Operation {
+	log.DebugContext("Starting operation extraction")
 	var operations []Operation
 
 	// Sort paths for consistent output
@@ -74,6 +97,8 @@ func extractOperations(spec *openapi3.T) []Operation {
 		paths = append(paths, path)
 	}
 	sort.Strings(paths)
+	
+	log.DebugContext("Processing paths", "path_count", len(paths))
 
 	for _, path := range paths {
 		pathItem := spec.Paths.Map()[path]
@@ -94,13 +119,21 @@ func extractOperations(spec *openapi3.T) []Operation {
 					Method:      method,
 					Path:        path,
 					Summary:     op.Summary,
-					Parameters:  extractParameters(op),
+					Parameters:  extractParameters(op, log),
 				}
+				
+				log.DebugContext("Extracted operation", 
+					"name", operation.Name,
+					"method", method,
+					"path", path,
+					"parameter_count", len(operation.Parameters))
+				
 				operations = append(operations, operation)
 			}
 		}
 	}
-
+	
+	log.InfoContext("Operation extraction completed", "total_operations", len(operations))
 	return operations
 }
 
@@ -125,7 +158,7 @@ func generateOperationName(method, path string, op *openapi3.Operation) string {
 }
 
 // extractParameters extracts parameters from an operation
-func extractParameters(op *openapi3.Operation) []Parameter {
+func extractParameters(op *openapi3.Operation, log *logger.Logger) []Parameter {
 	var params []Parameter
 	
 	for _, paramRef := range op.Parameters {
@@ -137,6 +170,12 @@ func extractParameters(op *openapi3.Operation) []Parameter {
 				In:       paramRef.Value.In,
 			}
 			params = append(params, param)
+			
+			log.DebugContext("Extracted parameter",
+				"name", param.Name,
+				"type", param.Type,
+				"required", param.Required,
+				"in", param.In)
 		}
 	}
 	

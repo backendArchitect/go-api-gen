@@ -7,6 +7,7 @@ import (
 	"text/template"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/backendArchitect/go-api-gen/pkg/logger"
 )
 
 // ModelData holds the data needed for model template generation
@@ -41,8 +42,20 @@ type Field struct {
 }
 
 // GenerateModels generates the model structs code
-func GenerateModels(spec *openapi3.T, packageName string) (string, error) {
-	models, typeAliases := extractModelsAndAliases(spec)
+func GenerateModels(spec *openapi3.T, packageName string, log *logger.Logger) (string, error) {
+	// Create a default logger if none provided
+	if log == nil {
+		log = logger.New(logger.Config{Level: logger.InfoLevel})
+	}
+	modelsLogger := log.WithComponent("models-template")
+	
+	modelsLogger.DebugContext("Starting model code generation", "package_name", packageName)
+	
+	models, typeAliases := extractModelsAndAliases(spec, modelsLogger)
+	
+	modelsLogger.DebugContext("Extracted schemas", 
+		"model_count", len(models),
+		"type_alias_count", len(typeAliases))
 	
 	// Check if we need time import
 	needsTime := false
@@ -50,6 +63,9 @@ func GenerateModels(spec *openapi3.T, packageName string) (string, error) {
 		for _, field := range model.Fields {
 			if field.Type == "time.Time" {
 				needsTime = true
+				modelsLogger.DebugContext("Time import needed due to field", 
+					"model", model.Name, 
+					"field", field.Name)
 				break
 			}
 		}
@@ -69,18 +85,21 @@ func GenerateModels(spec *openapi3.T, packageName string) (string, error) {
 	
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
+		modelsLogger.ErrorContext("Failed to execute models template", "error", err)
 		return "", fmt.Errorf("failed to execute models template: %w", err)
 	}
-
+	
+	modelsLogger.DebugContext("Model template executed successfully", "size_bytes", buf.Len())
 	return buf.String(), nil
 }
 
 // extractModelsAndAliases extracts all data models and type aliases from the OpenAPI spec
-func extractModelsAndAliases(spec *openapi3.T) ([]Model, []TypeAlias) {
+func extractModelsAndAliases(spec *openapi3.T, log *logger.Logger) ([]Model, []TypeAlias) {
 	var models []Model
 	var typeAliases []TypeAlias
 
 	if spec.Components == nil || spec.Components.Schemas == nil {
+		log.WarnContext("No schemas found in OpenAPI spec")
 		return models, typeAliases
 	}
 
@@ -90,6 +109,8 @@ func extractModelsAndAliases(spec *openapi3.T) ([]Model, []TypeAlias) {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	
+	log.DebugContext("Processing schemas", "schema_count", len(names))
 
 	for _, name := range names {
 		schemaRef := spec.Components.Schemas[name]
@@ -104,26 +125,40 @@ func extractModelsAndAliases(spec *openapi3.T) ([]Model, []TypeAlias) {
 					Description: schemaRef.Value.Description,
 				}
 				typeAliases = append(typeAliases, alias)
+				
+				log.DebugContext("Extracted type alias", 
+					"name", alias.Name,
+					"type", alias.Type)
 			} else {
 				// Regular object types as structs
+				fields := extractFields(schemaRef.Value, log)
 				model := Model{
 					Name:        toCamelCase(name),
 					Description: schemaRef.Value.Description,
-					Fields:      extractFields(schemaRef.Value),
+					Fields:      fields,
 				}
 				models = append(models, model)
+				
+				log.DebugContext("Extracted model", 
+					"name", model.Name,
+					"field_count", len(model.Fields))
 			}
 		}
 	}
 
+	log.InfoContext("Schema extraction completed", 
+		"total_models", len(models),
+		"total_type_aliases", len(typeAliases))
+	
 	return models, typeAliases
 }
 
 // extractFields extracts fields from a schema
-func extractFields(schema *openapi3.Schema) []Field {
+func extractFields(schema *openapi3.Schema, log *logger.Logger) []Field {
 	var fields []Field
 
 	if schema.Properties == nil {
+		log.DebugContext("Schema has no properties")
 		return fields
 	}
 
@@ -145,6 +180,12 @@ func extractFields(schema *openapi3.Schema) []Field {
 				Required:    isRequired(name, schema.Required),
 			}
 			fields = append(fields, field)
+			
+			log.DebugContext("Extracted field",
+				"name", field.Name,
+				"type", field.Type,
+				"json_tag", field.JSONTag,
+				"required", field.Required)
 		}
 	}
 
